@@ -1,0 +1,2 @@
+CREATE DATABASE IF NOT EXISTS memo_app;
+USE memo_app;
