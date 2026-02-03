@@ -25,6 +25,15 @@ def build_db_config():
     if db_url:
         return parse_database_url(db_url)
 
+    if os.getenv('MYSQL_HOST'):
+        return {
+            'host': os.getenv('MYSQL_HOST'),
+            'user': os.getenv('MYSQL_USER'),
+            'password': os.getenv('MYSQL_PASSWORD'),
+            'database': os.getenv('MYSQL_DB'),
+            'port': int(os.getenv('MYSQL_PORT', 3306)),
+        }
+
     if os.getenv('AIVEN_MYSQL_HOST'):
         return {
             'host': os.getenv('AIVEN_MYSQL_HOST'),
