@@ -25,12 +25,9 @@ def get_connection():
     if DB is None:
         # DATABASE_URL이 있으면 사용 (Railway), 없으면 개별 환경변수 사용 (로컬)
         db_url = os.getenv('DATABASE_URL')
-        
         if db_url:
-            # Railway 배포 환경
             db_config = parse_database_url(db_url)
         else:
-            # 로컬 개발 환경
             db_config = {
                 'host': os.getenv('DB_HOST', 'localhost'),
                 'user': os.getenv('DB_USER', 'root'),
