@@ -25,7 +25,7 @@ def parse_database_url(url):
     parsed = urlparse(url)
     return {
         'host': parsed.hostname,
-        'user': parsed.username,
+        'user': "avnadmin",
         'password': parsed.password,
         'database': parsed.path.lstrip('/'),
         'port': parsed.port or 3306
