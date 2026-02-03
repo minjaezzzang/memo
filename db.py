@@ -2,22 +2,44 @@ import pymysql
 import hashlib as hl
 import os
 from dotenv import load_dotenv
+from urllib.parse import urlparse
 
 load_dotenv()
 
 DB = None
 cur = None
 
+def parse_database_url(url):
+    """DATABASE_URL을 파싱해서 연결 정보 추출"""
+    parsed = urlparse(url)
+    return {
+        'host': parsed.hostname,
+        'user': parsed.username,
+        'password': parsed.password,
+        'database': parsed.path.lstrip('/'),
+        'port': parsed.port or 3306
+    }
+
 def get_connection():
     global DB, cur
     if DB is None:
-        DB = pymysql.connect(
-            host=os.getenv('DB_HOST', 'localhost'),
-            user=os.getenv('DB_USER', 'root'),
-            password=os.getenv('DB_PASSWORD', ''),
-            database=os.getenv('DB_NAME', 'memo_app'),
-            port=int(os.getenv('DB_PORT', 3306))
-        )
+        # DATABASE_URL이 있으면 사용 (Railway), 없으면 개별 환경변수 사용 (로컬)
+        db_url = os.getenv('DATABASE_URL')
+        
+        if db_url:
+            # Railway 배포 환경
+            db_config = parse_database_url(db_url)
+        else:
+            # 로컬 개발 환경
+            db_config = {
+                'host': os.getenv('DB_HOST', 'localhost'),
+                'user': os.getenv('DB_USER', 'root'),
+                'password': os.getenv('DB_PASSWORD', ''),
+                'database': os.getenv('DB_NAME', 'memo_app'),
+                'port': int(os.getenv('DB_PORT', 3306))
+            }
+        
+        DB = pymysql.connect(**db_config)
         cur = DB.cursor()
     return DB, cur
 
