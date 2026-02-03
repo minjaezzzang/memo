@@ -1,8 +1,68 @@
+# Virtual Environment
 venv/
+env/
+ENV/
+.venv
+
+# Python
 __pycache__/
-*.pyc
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Environment
 .env
-.DS_Store
-*.sqlite
-.idea/
+.env.local
+.env.*.local
+
+# IDE
 .vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Database
+*.sqlite
+*.sqlite3
+*.db
+
+# Flask
+instance/
+.webassets-cache
+
+# Pytest
+.pytest_cache/
+.coverage
+
+# Backup files
+*.bak
+*.tmp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Node (in case)
+node_modules/
+npm-debug.log
