@@ -39,8 +39,17 @@ def get_connection():
                 'port': int(os.getenv('DB_PORT', 3306))
             }
         
-        DB = pymysql.connect(**db_config)
-        cur = DB.cursor()
+        # 디버그: 비밀번호는 마스킹해서 로그에 남김
+        masked = db_config.copy()
+        if 'password' in masked and masked['password']:
+            masked['password'] = '****'
+        print(f"[db] connecting with: {masked}")
+        try:
+            DB = pymysql.connect(**db_config)
+            cur = DB.cursor()
+        except Exception as e:
+            print(f"[db] MySQL connect failed: {e}")
+            raise
     return DB, cur
 
 hash_password = lambda passwd: hl.sha256(passwd.encode()).hexdigest()

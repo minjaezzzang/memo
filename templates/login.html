@@ -17,6 +17,13 @@
             </div>
             {% endif %}
 
+            <script>
+                const urlParams = new URLSearchParams(window.location.search);
+                if (urlParams.get('registered') === '1') {
+                    alert('회원가입이 완료되었습니다. 로그인해주세요.');
+                }
+            </script>
+
             <form method="POST">
                 <div class="mb-3">
                     <label for="username" class="form-label">사용자명</label>
@@ -47,6 +54,14 @@
                     </button>
                 </div>
             </form>
+
+            <hr class="my-4">
+
+            <div class="d-grid">
+                <a href="/auth/google" class="btn btn-outline-danger btn-lg">
+                    <i class="bi bi-google"></i> Google로 로그인
+                </a>
+            </div>
 
             <hr class="my-4">
 
