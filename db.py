@@ -25,7 +25,7 @@ def build_db_config():
     if db_url:
         return parse_database_url(db_url)
 
-    if os.getenv('MYSQL_HOST'):
+    if os.getenv('MYSQL_HOST') and os.getenv('MYSQL_DB'):
         return {
             'host': os.getenv('MYSQL_HOST'),
             'user': os.getenv('MYSQL_USER'),
