@@ -31,51 +31,72 @@ def parse_database_url(url):
         'port': parsed.port or 3306
     }
 
+def looks_like_hostname(value):
+    if value is None:
+        return False
+    text = str(value)
+    return ('.' in text) or (':' in text)
+
+def normalize_db_config(db_config):
+    """환경변수 실수로 host/user가 뒤바뀐 경우 보정"""
+    host = db_config.get('host')
+    user = db_config.get('user')
+    if host and user:
+        host_is_host = looks_like_hostname(host)
+        user_is_host = looks_like_hostname(user)
+        if (not host_is_host) and user_is_host:
+            print("[db] ! Detected swapped host/user; auto-correcting")
+            db_config['host'], db_config['user'] = user, host
+    return db_config
+
 def build_db_config():
     """모든 환경변수 포맷 지원하는 DB 설정 빌드"""
     # 1. DATABASE_URL 형식 지원
     db_url = os.getenv('DATABASE_URL') or os.getenv('MYSQL_URL') or os.getenv('DB_URL')
     if db_url:
-        return parse_database_url(db_url)
+        if '://' not in db_url:
+            print("[db] ! DATABASE_URL missing scheme; ignoring")
+        else:
+            return normalize_db_config(parse_database_url(db_url))
 
     # 2. MYSQL_* 환경변수 (표준)
     if os.getenv('MYSQL_HOST'):
-        return {
+        return normalize_db_config({
             'host': os.getenv('MYSQL_HOST'),
             'user': os.getenv('MYSQL_USER', 'root'),
             'password': os.getenv('MYSQL_PASSWORD', ''),
             'database': os.getenv('MYSQL_DB', 'defaultdb'),
             'port': int(os.getenv('MYSQL_PORT', 3306)),
-        }
+        })
 
     # 3. AIVEN_MYSQL_* 환경변수
     if os.getenv('AIVEN_MYSQL_HOST'):
-        return {
+        return normalize_db_config({
             'host': os.getenv('AIVEN_MYSQL_HOST'),
             'user': os.getenv('AIVEN_MYSQL_USER'),
             'password': os.getenv('AIVEN_MYSQL_PASSWORD'),
             'database': os.getenv('AIVEN_MYSQL_DB'),
             'port': int(os.getenv('AIVEN_MYSQL_PORT', 3306)),
-        }
+        })
 
     # 4. MYSQLHOST 형식 (Railway 등)
     if os.getenv('MYSQLHOST'):
-        return {
+        return normalize_db_config({
             'host': os.getenv('MYSQLHOST'),
             'user': os.getenv('MYSQLUSER'),
             'password': os.getenv('MYSQLPASSWORD'),
             'database': os.getenv('MYSQLDATABASE'),
             'port': int(os.getenv('MYSQLPORT', 3306)),
-        }
+        })
 
     # 5. DB_* 환경변수 (레거시)
-    return {
+    return normalize_db_config({
         'host': os.getenv('DB_HOST', 'localhost'),
         'user': os.getenv('DB_USER', 'root'),
         'password': os.getenv('DB_PASSWORD', ''),
         'database': os.getenv('DB_NAME', 'memo_app'),
         'port': int(os.getenv('DB_PORT', 3306)),
-    }
+    })
 
 def reset_connection():
     """연결 초기화 (재연결 필요할 때)"""
