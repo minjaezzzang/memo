@@ -20,22 +20,44 @@ def parse_database_url(url):
         'port': parsed.port or 3306
     }
 
+def build_db_config():
+    db_url = os.getenv('DATABASE_URL') or os.getenv('MYSQL_URL') or os.getenv('DB_URL')
+    if db_url:
+        return parse_database_url(db_url)
+
+    if os.getenv('AIVEN_MYSQL_HOST'):
+        return {
+            'host': os.getenv('AIVEN_MYSQL_HOST'),
+            'user': os.getenv('AIVEN_MYSQL_USER'),
+            'password': os.getenv('AIVEN_MYSQL_PASSWORD'),
+            'database': os.getenv('AIVEN_MYSQL_DB'),
+            'port': int(os.getenv('AIVEN_MYSQL_PORT', 3306)),
+        }
+
+    if os.getenv('MYSQLHOST'):
+        return {
+            'host': os.getenv('MYSQLHOST'),
+            'user': os.getenv('MYSQLUSER'),
+            'password': os.getenv('MYSQLPASSWORD'),
+            'database': os.getenv('MYSQLDATABASE'),
+            'port': int(os.getenv('MYSQLPORT', 3306)),
+        }
+
+    return {
+        'host': os.getenv('DB_HOST', 'localhost'),
+        'user': os.getenv('DB_USER', 'root'),
+        'password': os.getenv('DB_PASSWORD', ''),
+        'database': os.getenv('DB_NAME', 'memo_app'),
+        'port': int(os.getenv('DB_PORT', 3306)),
+    }
+
+
 def get_connection():
     global DB, cur
     if DB is None:
-        # DATABASE_URL이 있으면 사용 (Railway), 없으면 개별 환경변수 사용 (로컬)
-        db_url = os.getenv('DATABASE_URL')
-        if db_url:
-            db_config = parse_database_url(db_url)
-        else:
-            db_config = {
-                'host': os.getenv('DB_HOST', 'localhost'),
-                'user': os.getenv('DB_USER', 'root'),
-                'password': os.getenv('DB_PASSWORD', ''),
-                'database': os.getenv('DB_NAME', 'memo_app'),
-                'port': int(os.getenv('DB_PORT', 3306))
-            }
-        
+        # DATABASE_URL이 있으면 사용 (Railway), 없으면 개별 환경변수 사용 (로컬/서비스 제공자)
+        db_config = build_db_config()
+
         # 디버그: 비밀번호는 마스킹해서 로그에 남김
         masked = db_config.copy()
         if 'password' in masked and masked['password']:
