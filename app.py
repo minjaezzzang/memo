@@ -7,20 +7,30 @@ import hashlib
 from dotenv import load_dotenv
 from urllib.parse import urlencode, parse_qs
 from urllib.request import urlopen
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 load_dotenv()
 
 app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY')
+# Reverse proxy 환경(예: Render, Nginx)에서 https/host 인식 보정
+app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 
 # Google OAuth 설정
 GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID')
 GOOGLE_CLIENT_SECRET = os.getenv('GOOGLE_CLIENT_SECRET')
-GOOGLE_REDIRECT_URI = os.getenv('GOOGLE_REDIRECT_URI', 'http://localhost:14444/auth/google/callback')
+GOOGLE_REDIRECT_URI = os.getenv('GOOGLE_REDIRECT_URI', '').strip()
 GOOGLE_AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth'
 GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token'
 GOOGLE_USERINFO_URL = 'https://www.googleapis.com/oauth2/v1/userinfo'
 SCOPES = ['openid', 'email', 'profile']
+
+def get_google_redirect_uri():
+    """환경변수 또는 현재 요청을 기반으로 Redirect URI 결정"""
+    if GOOGLE_REDIRECT_URI and GOOGLE_REDIRECT_URI.upper() != 'AUTO':
+        return GOOGLE_REDIRECT_URI
+    # 현재 요청 기준으로 자동 생성 (프록시 환경은 ProxyFix로 보정)
+    return url_for('auth_google_callback', _external=True)
 
 @app.route('/', methods=['GET'])
 def home():
@@ -44,8 +54,11 @@ def register():
     else:
         username = request.form['username']
         password = request.form['password']
-        db.add_user(username, password)
-        return redirect(url_for('login', registered='1'))
+        try:
+            db.add_user(username, password)
+            return redirect(url_for('login', registered='1'))
+        except db.DBError as e:
+            return render_template('register.html', error=str(e))
 @app.route('/logout')
 def logout():
     if 'username' in session:
@@ -66,9 +79,10 @@ def auth_google():
     session['oauth_state'] = state
     
     # Google 인증 URL 생성
+    redirect_uri = get_google_redirect_uri()
     params = {
         'client_id': GOOGLE_CLIENT_ID,
-        'redirect_uri': GOOGLE_REDIRECT_URI,
+        'redirect_uri': redirect_uri,
         'response_type': 'code',
         'scope': ' '.join(SCOPES),
         'state': state,
@@ -79,7 +93,7 @@ def auth_google():
     authorization_url = f"{GOOGLE_AUTH_URL}?{urlencode(params)}"
     print(f"[OAuth] Redirecting to: {authorization_url}")
     print(f"[OAuth] Client ID: {GOOGLE_CLIENT_ID}")
-    print(f"[OAuth] Redirect URI: {GOOGLE_REDIRECT_URI}")
+    print(f"[OAuth] Redirect URI: {redirect_uri}")
     
     return redirect(authorization_url)
 
@@ -105,12 +119,13 @@ def auth_google_callback():
     
     try:
         # 토큰 요청
+        redirect_uri = get_google_redirect_uri()
         token_params = {
             'client_id': GOOGLE_CLIENT_ID,
             'client_secret': GOOGLE_CLIENT_SECRET,
             'code': code,
             'grant_type': 'authorization_code',
-            'redirect_uri': GOOGLE_REDIRECT_URI
+            'redirect_uri': redirect_uri
         }
         
         token_response = requests.post(GOOGLE_TOKEN_URL, data=token_params)

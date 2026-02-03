@@ -10,6 +10,7 @@ load_dotenv()
 
 DB = None
 cur = None
+schema_initialized = False
 
 class DBError(Exception):
     """데이터베이스 관련 커스텀 예외"""
@@ -78,7 +79,7 @@ def build_db_config():
 
 def reset_connection():
     """연결 초기화 (재연결 필요할 때)"""
-    global DB, cur
+    global DB, cur, schema_initialized
     try:
         if cur:
             cur.close()
@@ -88,10 +89,49 @@ def reset_connection():
         pass
     DB = None
     cur = None
+    schema_initialized = False
+
+def ensure_schema():
+    """필수 테이블/인덱스가 없으면 생성"""
+    global DB, cur
+    try:
+        # users 테이블
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS users (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                username VARCHAR(64) NOT NULL UNIQUE,
+                password_hash CHAR(64) NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+            """
+        )
+        # memos 테이블
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS memos (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                title VARCHAR(255) NOT NULL,
+                content TEXT NOT NULL,
+                username VARCHAR(64) NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_memos_username (username)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+            """
+        )
+        DB.commit()
+        print("[db] ✓ Schema ensured")
+    except Exception as e:
+        print(f"[db] ✗ Schema ensure error: {e}")
+        try:
+            DB.rollback()
+        except Exception:
+            pass
+        raise DBError(f"스키마 생성 실패: {str(e)}")
 
 def get_connection():
     """데이터베이스 연결 획득"""
-    global DB, cur
+    global DB, cur, schema_initialized
     if DB is None:
         db_config = build_db_config()
 
@@ -119,6 +159,9 @@ def get_connection():
             # 연결 확인
             cur.execute("SELECT 1")
             print("[db] ✓ Connection successful!")
+            if not schema_initialized:
+                ensure_schema()
+                schema_initialized = True
         except pymysql.err.OperationalError as e:
             print(f"[db] ✗ Operational error: {e}")
             print(f"[db] Config: {masked}")
