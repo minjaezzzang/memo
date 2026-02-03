@@ -72,10 +72,15 @@ def auth_google():
         'response_type': 'code',
         'scope': ' '.join(SCOPES),
         'state': state,
-        'access_type': 'offline'
+        'access_type': 'offline',
+        'prompt': 'consent'  # 항상 동의 화면 표시
     }
     
     authorization_url = f"{GOOGLE_AUTH_URL}?{urlencode(params)}"
+    print(f"[OAuth] Redirecting to: {authorization_url}")
+    print(f"[OAuth] Client ID: {GOOGLE_CLIENT_ID}")
+    print(f"[OAuth] Redirect URI: {GOOGLE_REDIRECT_URI}")
+    
     return redirect(authorization_url)
 
 @app.route('/auth/google/callback')
